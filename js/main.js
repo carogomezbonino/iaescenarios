@@ -1,6 +1,4 @@
-// ===== ESCENARIOS PARA APRENDER CON IA - JAVASCRIPT =====
-
-// Variables globales
+// ===== VARIABLES GLOBALES =====
 let currentProgress = 0;
 let timerInterval;
 let timeLeft = 300; // 5 minutos en segundos
@@ -14,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeProgress();
     initializeCasinoLights();
     loadProgress();
+    updateTimerDisplay();
 });
 
 // ===== NAVEGACIÓN ACTIVA =====
@@ -126,508 +125,409 @@ function loadProgress() {
 
 // ===== TRAGAMONEDAS =====
 function initializeCasinoLights() {
-    const lights = document.querySelectorAll('.light');
-    lights.forEach((light, index) => {
-        setTimeout(() => {
-            light.style.animationDelay = `${index * 0.2}s`;
-        }, 100);
-    });
+    // Las luces ya están animadas con CSS
 }
 
 function spinSector(sectorNumber) {
-    const sector = document.getElementById(`sector${sectorNumber}`);
-    const button = document.getElementById(`spin${sectorNumber}`);
-    
-    if (!sector || !button) return;
+    const sectorDisplay = document.getElementById(`sector${sectorNumber}`);
+    const button = sectorDisplay.nextElementSibling;
+    const replaceButton = button.nextElementSibling;
     
     // Deshabilitar botón durante la animación
     button.disabled = true;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Girando...';
+    sectorDisplay.classList.add('spinning');
     
-    // Animación de giro
-    sector.classList.add('spinning');
-    
-    setTimeout(() => {
-        const availableNumbers = [];
-        for (let i = 1; i <= 18; i++) {
-            if (!usedNumbers.includes(i)) {
-                availableNumbers.push(i);
+    // Simular animación de giro
+    let spinCount = 0;
+    const spinInterval = setInterval(() => {
+        const randomNum = Math.floor(Math.random() * 18) + 1;
+        sectorDisplay.textContent = randomNum;
+        spinCount++;
+        
+        if (spinCount > 10) {
+            clearInterval(spinInterval);
+            
+            // Seleccionar número final
+            const finalNumber = getAvailableNumber();
+            sectorDisplay.textContent = finalNumber;
+            sectorDisplay.classList.remove('spinning');
+            
+            // Guardar selección
+            selectedGroups[`sector${sectorNumber}`] = finalNumber;
+            usedNumbers.push(finalNumber);
+            
+            // Habilitar botón de reemplazo
+            button.style.display = 'none';
+            replaceButton.style.display = 'inline-block';
+            
+            // Mostrar notificación
+            showNotification(`¡Grupo ${finalNumber} seleccionado!`);
+            
+            // Si ambos sectores están completos, mostrar resultado
+            if (selectedGroups.sector1 && selectedGroups.sector2) {
+                showNotification(`¡Pareja formada: Grupo ${selectedGroups.sector1} VS Grupo ${selectedGroups.sector2}!`);
             }
         }
-        
-        if (availableNumbers.length === 0) {
-            showNotification('¡Todos los grupos han sido seleccionados!');
-            button.disabled = false;
-            button.innerHTML = `<i class="fas fa-play"></i> Girar Sector ${sectorNumber}`;
-            sector.classList.remove('spinning');
-            return;
-        }
-        
-        const randomNumber = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
-        usedNumbers.push(randomNumber);
-        selectedGroups[`sector${sectorNumber}`] = randomNumber;
-        
-        // Actualizar display
-        sector.querySelector('.slot-number').textContent = randomNumber;
-        sector.classList.remove('spinning');
-        
-        // Restaurar botón
-        button.disabled = false;
-        button.innerHTML = `<i class="fas fa-play"></i> Girar Sector ${sectorNumber}`;
-        
-        updateGroupsList();
-        
-        // Mostrar notificación
-        if (selectedGroups.sector1 && selectedGroups.sector2) {
-            showNotification(`¡Pareja formada: Grupo ${selectedGroups.sector1} - Grupo ${selectedGroups.sector2}!`);
-            showReplaceButtons();
-        }
-        
-    }, 2000);
+    }, 100);
 }
 
-function replaceGroup(sectorNumber) {
-    const currentGroup = selectedGroups[`sector${sectorNumber}`];
+function replaceSector(sectorNumber) {
+    const sectorDisplay = document.getElementById(`sector${sectorNumber}`);
+    const button = sectorDisplay.nextElementSibling;
+    const replaceButton = button.nextElementSibling;
     
-    // Devolver el número actual a la lista disponible
-    if (currentGroup) {
-        const index = usedNumbers.indexOf(currentGroup);
+    // Liberar el número actual
+    const currentNumber = selectedGroups[`sector${sectorNumber}`];
+    if (currentNumber) {
+        const index = usedNumbers.indexOf(currentNumber);
         if (index > -1) {
             usedNumbers.splice(index, 1);
         }
     }
     
-    // Girar nuevamente el sector
-    spinSector(sectorNumber);
-}
-
-function updateGroupsList() {
-    const groupsList = document.getElementById('groupsList');
+    // Resetear sector
+    selectedGroups[`sector${sectorNumber}`] = null;
+    sectorDisplay.textContent = '?';
     
-    if (selectedGroups.sector1 && selectedGroups.sector2) {
-        groupsList.innerHTML = `
-            <div class="group-pair">
-                <i class="fas fa-users"></i>
-                <span>Grupo ${selectedGroups.sector1} - Grupo ${selectedGroups.sector2}</span>
-            </div>
-        `;
-    } else if (selectedGroups.sector1 || selectedGroups.sector2) {
-        const selectedGroup = selectedGroups.sector1 || selectedGroups.sector2;
-        groupsList.innerHTML = `
-            <div class="group-single">
-                <i class="fas fa-user"></i>
-                <span>Grupo ${selectedGroup}</span>
-                <small>Gira el otro sector para completar la pareja</small>
-            </div>
-        `;
-    } else {
-        groupsList.innerHTML = `
-            <div class="no-groups">
-                <i class="fas fa-dice"></i>
-                <span>¡Gira los sectores para seleccionar grupos!</span>
-            </div>
-        `;
-    }
+    // Cambiar botones
+    button.style.display = 'inline-block';
+    replaceButton.style.display = 'none';
+    button.disabled = false;
+    
+    showNotification(`Sector ${sectorNumber} reseteado. ¡Puedes girar nuevamente!`);
 }
 
-function showReplaceButtons() {
-    const replaceButtons = document.getElementById('replaceButtons');
-    if (replaceButtons) {
-        replaceButtons.style.display = 'block';
-        
-        // Actualizar textos de los botones
-        document.getElementById('replace1').innerHTML = `
-            <i class="fas fa-sync-alt"></i>
-            Reemplazar Grupo ${selectedGroups.sector1}
-        `;
-        document.getElementById('replace2').innerHTML = `
-            <i class="fas fa-sync-alt"></i>
-            Reemplazar Grupo ${selectedGroups.sector2}
-        `;
+function getAvailableNumber() {
+    const availableNumbers = [];
+    for (let i = 1; i <= 18; i++) {
+        if (!usedNumbers.includes(i)) {
+            availableNumbers.push(i);
+        }
     }
+    
+    if (availableNumbers.length === 0) {
+        // Si no hay números disponibles, resetear
+        usedNumbers = [];
+        for (let i = 1; i <= 18; i++) {
+            availableNumbers.push(i);
+        }
+    }
+    
+    return availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
 }
 
 // ===== CRONÓMETRO =====
-function startTimer() {
-    const startBtn = document.getElementById('startBtn');
+function updateTimerDisplay() {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
     
+    document.getElementById('timer-minutes').textContent = minutes.toString().padStart(2, '0');
+    document.getElementById('timer-seconds').textContent = seconds.toString().padStart(2, '0');
+    
+    // Actualizar progreso circular
+    const progress = ((300 - timeLeft) / 300) * 360;
+    const timerCircle = document.querySelector('.timer-circle');
+    if (timerCircle) {
+        timerCircle.style.background = `conic-gradient(var(--azul-educativo) ${progress}deg, #e0e0e0 ${progress}deg)`;
+    }
+    
+    // Cambiar color cuando queda poco tiempo
+    if (timeLeft <= 60) {
+        timerCircle.style.background = `conic-gradient(var(--rojo-educativo) ${progress}deg, #e0e0e0 ${progress}deg)`;
+    } else if (timeLeft <= 120) {
+        timerCircle.style.background = `conic-gradient(var(--naranja-energetico) ${progress}deg, #e0e0e0 ${progress}deg)`;
+    }
+}
+
+function startTimer() {
     if (!isTimerRunning) {
         isTimerRunning = true;
-        startBtn.innerHTML = '<i class="fas fa-pause"></i>';
-        startBtn.classList.remove('start');
-        startBtn.classList.add('pause');
-        
         timerInterval = setInterval(() => {
             timeLeft--;
             updateTimerDisplay();
             
             if (timeLeft <= 0) {
-                finishTimer();
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                showConfetti();
+                showNotification('¡Tiempo terminado! 🎉');
+                timeLeft = 300; // Reset para próximo uso
+                updateTimerDisplay();
             }
         }, 1000);
-    } else {
-        pauseTimer();
+        
+        showNotification('¡Cronómetro iniciado!');
     }
 }
 
 function pauseTimer() {
-    isTimerRunning = false;
-    clearInterval(timerInterval);
-    
-    const startBtn = document.getElementById('startBtn');
-    startBtn.innerHTML = '<i class="fas fa-play"></i>';
-    startBtn.classList.remove('pause');
-    startBtn.classList.add('start');
+    if (isTimerRunning) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+        showNotification('Cronómetro pausado');
+    }
 }
 
 function resetTimer() {
-    pauseTimer();
+    clearInterval(timerInterval);
+    isTimerRunning = false;
     timeLeft = 300;
     updateTimerDisplay();
-    
-    const timerCircle = document.getElementById('timerCircle');
-    if (timerCircle) {
-        timerCircle.style.strokeDashoffset = '283';
-        timerCircle.classList.remove('warning', 'danger');
-    }
-}
-
-function updateTimerDisplay() {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    
-    const timerDisplay = document.getElementById('timerDisplay');
-    if (timerDisplay) {
-        timerDisplay.textContent = display;
-    }
-    
-    // Actualizar círculo de progreso
-    const timerCircle = document.getElementById('timerCircle');
-    if (timerCircle) {
-        const progress = (300 - timeLeft) / 300;
-        const circumference = 2 * Math.PI * 45;
-        const offset = circumference - (progress * circumference);
-        
-        timerCircle.style.strokeDashoffset = offset;
-        
-        // Cambiar colores según el tiempo restante
-        if (timeLeft <= 60) {
-            timerCircle.classList.add('danger');
-        } else if (timeLeft <= 120) {
-            timerCircle.classList.add('warning');
-        }
-    }
-}
-
-function finishTimer() {
-    pauseTimer();
-    showConfetti();
-    showNotification('¡Tiempo terminado! 🎉');
-    
-    // Resetear para la siguiente ronda
-    setTimeout(() => {
-        resetTimer();
-    }, 3000);
+    showNotification('Cronómetro reiniciado');
 }
 
 // ===== MODALES TPACK =====
-function showTPACKModal(type) {
-    const modal = document.getElementById('tpackModal');
-    const modalContent = document.getElementById('modalContent');
+function openTPACKModal(type) {
+    const modal = document.getElementById('tpack-modal');
+    const content = document.getElementById('tpack-modal-content');
     
     const tpackContent = {
         technology: {
             title: 'Conocimiento Tecnológico (TK)',
-            content: `
-                <h3>Tecnología</h3>
-                <p>Comprende el conocimiento sobre diversas tecnologías, desde las más básicas hasta las más avanzadas, incluyendo:</p>
-                <ul>
-                    <li>Herramientas digitales y software educativo</li>
-                    <li>Plataformas de aprendizaje virtual</li>
-                    <li>Inteligencia artificial y sus aplicaciones</li>
-                    <li>Dispositivos y hardware educativo</li>
-                </ul>
-                <p><strong>En el contexto de IA:</strong> Conocimiento sobre chatbots, generadores de contenido, sistemas de tutoría inteligente, etc.</p>
-            `
+            description: 'Comprensión de las tecnologías digitales, incluyendo IA, y cómo pueden ser utilizadas en contextos educativos.',
+            examples: ['Herramientas de IA generativa', 'Plataformas educativas', 'Software especializado', 'Dispositivos digitales']
         },
         pedagogy: {
             title: 'Conocimiento Pedagógico (PK)',
-            content: `
-                <h3>Pedagogía</h3>
-                <p>Incluye el conocimiento profundo sobre procesos y prácticas de enseñanza y aprendizaje:</p>
-                <ul>
-                    <li>Teorías del aprendizaje</li>
-                    <li>Métodos de enseñanza</li>
-                    <li>Evaluación y retroalimentación</li>
-                    <li>Gestión del aula y motivación</li>
-                </ul>
-                <p><strong>Con IA:</strong> Cómo integrar la IA para personalizar el aprendizaje, fomentar la creatividad y desarrollar pensamiento crítico.</p>
-            `
+            description: 'Comprensión profunda de los procesos y métodos de enseñanza y aprendizaje.',
+            examples: ['Metodologías activas', 'Evaluación formativa', 'Gestión del aula', 'Teorías del aprendizaje']
         },
         content: {
             title: 'Conocimiento del Contenido (CK)',
-            content: `
-                <h3>Contenido</h3>
-                <p>Se refiere al conocimiento sobre la materia que se va a enseñar:</p>
-                <ul>
-                    <li>Conceptos fundamentales de la disciplina</li>
-                    <li>Estructura y organización del conocimiento</li>
-                    <li>Metodologías específicas del área</li>
-                    <li>Actualización disciplinar constante</li>
-                </ul>
-                <p><strong>En la era de IA:</strong> Cómo la IA está transformando cada disciplina y qué nuevos contenidos emergen.</p>
-            `
+            description: 'Dominio de la materia o disciplina que se enseña.',
+            examples: ['Conceptos disciplinares', 'Estructura del conocimiento', 'Métodos de investigación', 'Actualización científica']
         },
         tpk: {
             title: 'Conocimiento Tecno-Pedagógico (TPK)',
-            content: `
-                <h3>Intersección Tecnología-Pedagogía</h3>
-                <p>Comprende cómo la tecnología puede cambiar la enseñanza:</p>
-                <ul>
-                    <li>Selección de tecnologías apropiadas para objetivos pedagógicos</li>
-                    <li>Adaptación de métodos de enseñanza con tecnología</li>
-                    <li>Comprensión de affordances y limitaciones tecnológicas</li>
-                </ul>
-                <p><strong>Con IA:</strong> Saber cuándo y cómo usar IA para mejorar la enseñanza sin perder el enfoque pedagógico.</p>
-            `
+            description: 'Comprensión de cómo la tecnología puede facilitar enfoques pedagógicos específicos.',
+            examples: ['Gamificación digital', 'Aprendizaje colaborativo online', 'Evaluación automatizada', 'Personalización con IA']
         },
         tck: {
             title: 'Conocimiento Tecno-Disciplinar (TCK)',
-            content: `
-                <h3>Intersección Tecnología-Contenido</h3>
-                <p>Conocimiento sobre cómo la tecnología puede crear nuevas representaciones del contenido:</p>
-                <ul>
-                    <li>Herramientas específicas para la disciplina</li>
-                    <li>Nuevas formas de representar conceptos</li>
-                    <li>Simulaciones y modelado digital</li>
-                </ul>
-                <p><strong>Con IA:</strong> Cómo la IA puede generar, analizar o transformar contenido disciplinar específico.</p>
-            `
+            description: 'Comprensión de cómo la tecnología puede transformar el contenido disciplinar.',
+            examples: ['Simulaciones científicas', 'Modelado matemático', 'Análisis de datos', 'Visualizaciones interactivas']
         },
         pck: {
             title: 'Conocimiento Pedagógico del Contenido (PCK)',
-            content: `
-                <h3>Intersección Pedagogía-Contenido</h3>
-                <p>Conocimiento sobre cómo enseñar contenido específico:</p>
-                <ul>
-                    <li>Estrategias de enseñanza específicas para la materia</li>
-                    <li>Conocimiento de dificultades de aprendizaje típicas</li>
-                    <li>Representaciones y analogías efectivas</li>
-                </ul>
-                <p><strong>Con IA:</strong> Cómo usar IA para identificar dificultades de aprendizaje y personalizar la enseñanza del contenido.</p>
-            `
+            description: 'Comprensión de cómo enseñar contenidos específicos de manera efectiva.',
+            examples: ['Analogías disciplinares', 'Errores conceptuales comunes', 'Secuencias didácticas', 'Representaciones múltiples']
         },
         tpack: {
             title: 'TPACK + IA',
-            content: `
-                <h3>Integración Completa: TPACK + IA</h3>
-                <p>La intersección de los tres conocimientos con IA representa:</p>
-                <ul>
-                    <li><strong>Uso reflexivo:</strong> No solo usar IA, sino reflexionar sobre su impacto</li>
-                    <li><strong>Contextualización:</strong> Adaptar la IA al contexto específico de enseñanza</li>
-                    <li><strong>Situación:</strong> Considerar el entorno social y cultural</li>
-                    <li><strong>Ética:</strong> Uso responsable y crítico de la tecnología</li>
-                </ul>
-                <div class="highlight-box">
-                    <p><strong>Enfoque clave:</strong> La herramienta no es neutra, ni el uso meramente funcional.</p>
-                </div>
-            `
+            description: 'Integración equilibrada de tecnología (incluyendo IA), pedagogía y contenido para crear experiencias de aprendizaje transformadoras.',
+            examples: ['Diseño de actividades con IA', 'Evaluación inteligente', 'Tutorías personalizadas', 'Análisis predictivo del aprendizaje']
         }
     };
     
-    if (tpackContent[type]) {
-        modalContent.innerHTML = `
-            <h2>${tpackContent[type].title}</h2>
-            ${tpackContent[type].content}
-        `;
-        modal.style.display = 'block';
-    }
-}
-
-function closeTPACKModal() {
-    const modal = document.getElementById('tpackModal');
-    modal.style.display = 'none';
+    const data = tpackContent[type];
+    content.innerHTML = `
+        <h2>${data.title}</h2>
+        <p>${data.description}</p>
+        <h3>Ejemplos:</h3>
+        <ul>
+            ${data.examples.map(example => `<li>${example}</li>`).join('')}
+        </ul>
+    `;
+    
+    modal.style.display = 'block';
 }
 
 // ===== MODALES DIÁLOGOS =====
-function showDialogueModal(type) {
-    const modal = document.getElementById('dialogueModal');
-    const modalContent = document.getElementById('dialogueModalContent');
+function openDialogueModal(type) {
+    const modal = document.getElementById('dialogue-modal');
+    const content = document.getElementById('dialogue-modal-content');
     
     const dialogueContent = {
         continuum: {
             title: 'IA como continuum',
-            image: 'images/insignia1-continuum.png',
-            content: `
-                <h3>La inteligencia artificial como espectro continuo</h3>
-                <p>La IA no es una tecnología única, sino un continuum de capacidades que van desde:</p>
-                <ul>
-                    <li><strong>IA débil:</strong> Sistemas especializados en tareas específicas</li>
-                    <li><strong>IA fuerte:</strong> Sistemas con capacidades cognitivas generales</li>
-                    <li><strong>Automatización simple:</strong> Reglas predefinidas</li>
-                    <li><strong>Aprendizaje automático:</strong> Sistemas que aprenden de datos</li>
-                </ul>
-                <div class="reflection-box">
-                    <h4>💭 Reflexión pedagógica</h4>
-                    <p>En educación, esto significa reconocer que diferentes herramientas de IA tienen diferentes capacidades y limitaciones. No todas las IA son iguales.</p>
-                </div>
-            `
+            description: 'La inteligencia artificial no es una tecnología binaria, sino un espectro continuo de capacidades que van desde herramientas simples hasta sistemas complejos.',
+            details: 'Comprender la IA como un continuum nos ayuda a ubicar cada herramienta en su contexto apropiado y a tomar decisiones informadas sobre su uso educativo.'
         },
         generative: {
             title: 'Diálogos generativos con la IA',
-            image: 'images/insignia-2dialogogenerativoconia.png',
-            content: `
-                <h3>Interacciones creativas con sistemas de IA</h3>
-                <p>Los diálogos generativos implican:</p>
-                <ul>
-                    <li><strong>Co-creación:</strong> Humanos y IA trabajando juntos</li>
-                    <li><strong>Iteración:</strong> Refinamiento continuo de ideas</li>
-                    <li><strong>Creatividad aumentada:</strong> IA como catalizador de ideas</li>
-                    <li><strong>Pensamiento crítico:</strong> Evaluación constante de resultados</li>
-                </ul>
-                <div class="reflection-box">
-                    <h4>💭 En el aula</h4>
-                    <p>Promover que los estudiantes vean la IA como un compañero de diálogo, no como una fuente de respuestas definitivas.</p>
-                </div>
-            `
+            description: 'Las interacciones con sistemas de IA pueden ser creativas y productivas cuando se establecen como diálogos reflexivos.',
+            details: 'El arte está en formular preguntas precisas, iterar sobre las respuestas y mantener una postura crítica ante los resultados generados.'
         },
         teachers: {
             title: 'Diálogos entre docentes',
-            image: 'images/insignia3-dialogogenerativoconpares.png',
-            content: `
-                <h3>Intercambio pedagógico sobre IA</h3>
-                <p>La importancia del diálogo entre pares incluye:</p>
-                <ul>
-                    <li><strong>Experiencias compartidas:</strong> Qué funciona y qué no</li>
-                    <li><strong>Reflexión colectiva:</strong> Construcción social del conocimiento</li>
-                    <li><strong>Apoyo mutuo:</strong> Acompañamiento en la innovación</li>
-                    <li><strong>Desarrollo profesional:</strong> Aprendizaje continuo</li>
-                </ul>
-                <div class="reflection-box">
-                    <h4>💭 Comunidades de práctica</h4>
-                    <p>Los espacios de intercambio entre docentes son fundamentales para una integración reflexiva de la IA en educación.</p>
-                </div>
-            `
+            description: 'El intercambio de experiencias entre educadores es fundamental para construir conocimiento colectivo sobre el uso de IA.',
+            details: 'Compartir casos, reflexiones y desafíos nos permite aprender unos de otros y construir mejores prácticas pedagógicas.'
         },
-        ourselves: {
-            title: 'Diálogo con nosotrxs mismxs',
-            image: 'images/insignia4-dialogogenerativoconuno.png',
-            content: `
-                <h3>Reflexión personal y metacognición</h3>
-                <p>El diálogo interno implica:</p>
-                <ul>
-                    <li><strong>Autoconocimiento:</strong> Reconocer nuestras creencias sobre tecnología</li>
-                    <li><strong>Metacognición:</strong> Pensar sobre nuestro propio pensamiento</li>
-                    <li><strong>Valores educativos:</strong> Qué consideramos importante en educación</li>
-                    <li><strong>Resistencias y miedos:</strong> Identificar y abordar nuestras preocupaciones</li>
-                </ul>
-                <div class="reflection-box">
-                    <h4>💭 Preguntas clave</h4>
-                    <p>¿Cómo cambia mi rol docente con la IA? ¿Qué aspectos humanos de la educación quiero preservar?</p>
-                </div>
-            `
+        self: {
+            title: 'Diálogo con nosotros mismos',
+            description: 'La reflexión personal sobre nuestras prácticas, creencias y resistencias es esencial en el proceso de integración de IA.',
+            details: 'Cuestionar nuestros supuestos y estar abiertos al cambio nos permite crecer como educadores en la era digital.'
         },
         networks: {
             title: 'Diálogos en redes',
-            image: 'images/insignia5-dialogoenredes.png',
-            content: `
-                <h3>Participación en comunidades virtuales</h3>
-                <p>Los diálogos en red incluyen:</p>
-                <ul>
-                    <li><strong>Comunidades globales:</strong> Conexión con educadores de todo el mundo</li>
-                    <li><strong>Intercambio de recursos:</strong> Compartir herramientas y experiencias</li>
-                    <li><strong>Construcción colectiva:</strong> Conocimiento distribuido</li>
-                    <li><strong>Diversidad de perspectivas:</strong> Enriquecimiento mutuo</li>
-                </ul>
-                <div class="reflection-box">
-                    <h4>💭 Ciudadanía digital</h4>
-                    <p>Participar responsablemente en redes educativas, contribuyendo al bien común del conocimiento.</p>
-                </div>
-            `
+            description: 'La participación en comunidades de práctica y espacios virtuales amplía nuestras perspectivas sobre la IA educativa.',
+            details: 'Las redes nos conectan con experiencias globales y nos permiten contribuir al conocimiento colectivo sobre educación e IA.'
         }
     };
     
-    if (dialogueContent[type]) {
-        modalContent.innerHTML = `
-            <div class="modal-header">
-                <img src="${dialogueContent[type].image}" alt="${dialogueContent[type].title}" class="modal-image">
-                <h2>${dialogueContent[type].title}</h2>
-            </div>
-            ${dialogueContent[type].content}
-        `;
-        modal.style.display = 'block';
+    const data = dialogueContent[type];
+    content.innerHTML = `
+        <h2>${data.title}</h2>
+        <p><strong>${data.description}</strong></p>
+        <p>${data.details}</p>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// Cerrar modal al hacer clic fuera
+window.onclick = function(event) {
+    const tpackModal = document.getElementById('tpack-modal');
+    const dialogueModal = document.getElementById('dialogue-modal');
+    
+    if (event.target === tpackModal) {
+        tpackModal.style.display = 'none';
+    }
+    if (event.target === dialogueModal) {
+        dialogueModal.style.display = 'none';
     }
 }
 
-function closeDialogueModal() {
-    const modal = document.getElementById('dialogueModal');
-    modal.style.display = 'none';
-}
-
-// ===== EFECTOS VISUALES =====
+// ===== CONFETIS =====
 function showConfetti() {
-    // Crear elementos de confeti
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    const confetti = [];
+    const colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#FFD700'];
+    
+    // Crear confetis
     for (let i = 0; i < 100; i++) {
-        createConfettiPiece();
+        confetti.push({
+            x: Math.random() * canvas.width,
+            y: -10,
+            vx: (Math.random() - 0.5) * 4,
+            vy: Math.random() * 3 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            size: Math.random() * 8 + 4,
+            rotation: Math.random() * 360,
+            rotationSpeed: (Math.random() - 0.5) * 10
+        });
     }
-}
-
-function createConfettiPiece() {
-    const confetti = document.createElement('div');
-    confetti.className = 'confetti';
-    confetti.style.left = Math.random() * 100 + 'vw';
-    confetti.style.backgroundColor = getRandomColor();
-    confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
-    confetti.style.animationDelay = Math.random() * 2 + 's';
     
-    document.body.appendChild(confetti);
+    function animateConfetti() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (let i = confetti.length - 1; i >= 0; i--) {
+            const c = confetti[i];
+            
+            // Actualizar posición
+            c.x += c.vx;
+            c.y += c.vy;
+            c.rotation += c.rotationSpeed;
+            
+            // Dibujar confeti
+            ctx.save();
+            ctx.translate(c.x, c.y);
+            ctx.rotate(c.rotation * Math.PI / 180);
+            ctx.fillStyle = c.color;
+            ctx.fillRect(-c.size/2, -c.size/2, c.size, c.size);
+            ctx.restore();
+            
+            // Remover confetis que salen de pantalla
+            if (c.y > canvas.height + 10) {
+                confetti.splice(i, 1);
+            }
+        }
+        
+        if (confetti.length > 0) {
+            requestAnimationFrame(animateConfetti);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
     
-    // Remover después de la animación
-    setTimeout(() => {
-        confetti.remove();
-    }, 5000);
+    animateConfetti();
 }
 
-function getRandomColor() {
-    const colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D'];
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
+// ===== NOTIFICACIONES =====
 function showNotification(message) {
-    const notification = document.getElementById('notification');
+    // Crear elemento de notificación
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: var(--azul-educativo);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 10000;
+        font-weight: 500;
+        max-width: 300px;
+        animation: slideInRight 0.3s ease;
+    `;
     notification.textContent = message;
-    notification.classList.add('show');
     
+    // Agregar estilos de animación
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // Remover después de 3 segundos
     setTimeout(() => {
-        notification.classList.remove('show');
+        notification.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
     }, 3000);
 }
 
-// ===== EVENT LISTENERS =====
-// Cerrar modales al hacer clic fuera
-window.onclick = function(event) {
-    const tpackModal = document.getElementById('tpackModal');
-    const dialogueModal = document.getElementById('dialogueModal');
-    
-    if (event.target === tpackModal) {
-        closeTPACKModal();
-    }
-    if (event.target === dialogueModal) {
-        closeDialogueModal();
-    }
+// ===== UTILIDADES =====
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
-// Cerrar modales con Escape
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeTPACKModal();
-        closeDialogueModal();
-    }
-});
-
-// ===== INICIALIZACIÓN DEL CRONÓMETRO =====
-document.addEventListener('DOMContentLoaded', function() {
-    updateTimerDisplay();
-});
+// Redimensionar canvas de confetis al cambiar tamaño de ventana
+window.addEventListener('resize', debounce(() => {
+    const canvas = document.getElementById('confetti-canvas');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}, 250));
 
